@@ -1,11 +1,12 @@
-# CodinGame solutions
+# CodinGame puzzles solutions
 ## Single player puzzles. [:link:](https://www.codingame.com/puzzles)
 - :star: [Easy](#Easy)
 - :star::star: [Medium](#Medium)
 - :star::star::star: [Hard](#Hard)
 - :star::star::star::star:[Very Hard](#VeryHard)
 
-### :star: Easy <a name="Easy"></a>
+
+### <a name="Easy"></a> :star: Easy
 - Onboarding - [Java](/src/01-easy/Onboarding.java)
 
   ![Puzzles](../gh-pages/images/puzzles/easy/Onboarding.jpg)
@@ -41,7 +42,7 @@
   ![Puzzles](../gh-pages/images/puzzles/easy/ChuckNorris.jpg)
 
 
-### :star::star: Medium <a name="Medium"></a>
+### <a name="Medium"></a> :star::star: Medium
 
 - Heat Detector - [Java](/src/02-medium/HeatDetector.java)
 
@@ -64,11 +65,11 @@
   ![Puzzles](../gh-pages/images/puzzles/medium/TheGift.jpg)
 
 
-### :star::star::star: Hard <a name="Hard"></a>
+### <a name="Hard"></a> :star::star::star: Hard
 
 - Indiana - Level 2 - [Java](/src/03-hard/IndianaLevel2.java)
 
   ![Puzzles](../gh-pages/images/puzzles/hard/IndianaLevel2.jpg)
 
 
-### :star::star::star::star: Very Hard <a name="VeryHard"></a>
+### <a name="VeryHard"></a> :star::star::star::star: Very Hard
