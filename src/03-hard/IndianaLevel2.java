@@ -1,4 +1,5 @@
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -10,23 +11,52 @@ class Player {
     static int H; // number of rows.
     static int EX; // the coordinate along the X axis of the exit.
     static Map<Coordinate, Room> grid;
-    static String answer;
-    static int unnecessaryCalls = 0;
-    static Direction TOP = Direction.TOP;
-    static Direction LEFT = Direction.LEFT;
-    static Direction DOWN = Direction.DOWN;
-    static Direction RIGHT = Direction.RIGHT;
+    static final Direction TOP = Direction.TOP;
+    static final Direction LEFT = Direction.LEFT;
+    static final Direction DOWN = Direction.DOWN;
+    static final Direction RIGHT = Direction.RIGHT;
 
     public static void main(String args[]) {
-        long time = System.currentTimeMillis();
-
+        long startTime = System.currentTimeMillis();
         Scanner in = new Scanner(System.in);
-        System.err.println("Created Scanner: " + (System.currentTimeMillis() - time) + "ms");
+
+        initWidthHeight(startTime, in);
+        initGrid(in);
+        initExitXCoordinate(in);
+
+        Coordinate initialCoordinate = getInitialCoordinate(in);
+        String posI = in.next(); // Indy entrance point into the room TOP, LEFT or RIGHT
+        Path initialPath = getInitialPath(initialCoordinate, posI);
+        List<Command> commands = goFrom(initialCoordinate, initialPath, 1, -1); // commands for rotating rooms of FIRST found path
+        Collections.reverse(commands);
+
+        System.err.println("Done calculations: " + (System.currentTimeMillis() - startTime) + "ms");
+
+        adjustGrid(commands);
+
+        List<Command> rockCommands = solveCrossroads(initialCoordinate, initialPath);
+
+        logCommands(commands, "Indy Commands:");
+        logCommands(rockCommands, "Rock Commands:");
+
+        if (rockCommands.isEmpty()) {
+            outputWithoutConsideringRocks(commands);
+        } else {
+            outputWithRockIntersections(commands, rockCommands);
+        }
+        outputWaitTillTheEnd();
+    }
+
+    //<editor-fold desc="Initialization">
+    private static void initWidthHeight(long startTime, Scanner in) {
+        System.err.println("Created Scanner: " + (System.currentTimeMillis() - startTime) + "ms");
         W = in.nextInt();
         H = in.nextInt();
-        System.err.println("Scanned for (int) W and H: " + (System.currentTimeMillis() - time) + "ms");
+        System.err.println("Scanned for (int) W and H: " + (System.currentTimeMillis() - startTime) + "ms");
         in.nextLine();
+    }
 
+    private static void initGrid(Scanner in) {
         grid = new HashMap<Coordinate, Room>(W * H);
         for (int i = 0; i < H; i++) {
             String[] LINE = in.nextLine().split(" ");
@@ -36,189 +66,166 @@ class Player {
                 grid.put(new Coordinate(j, i), new Room(Integer.parseInt(LINE[j])));
             }
         }
+    }
 
+    private static void initExitXCoordinate(Scanner in) {
         EX = in.nextInt();
         in.nextLine();
+    }
 
+    private static Coordinate getInitialCoordinate(Scanner in) {
         int XI = in.nextInt();
         int YI = in.nextInt();
-        String POSI = in.next(); // Indy entrance point into the room TOP, LEFT or RIGHT
-
-        Coordinate fromCoordinate = new Coordinate(XI, YI);
-        Path startingPath = getStartingLeaveDirection(fromCoordinate, POSI);
-        goFrom(fromCoordinate, startingPath, 1, "", -1);
-        System.err.println("Done calculations: " + (System.currentTimeMillis() - time) + "ms");
-        System.err.println("Unnecessary calls: " + unnecessaryCalls);
-
-        String[] commands = answer.split(";");
-        adjustGrid(commands);
-
-        String rockAnswer = solveCrossroads(fromCoordinate, startingPath);
-        String[] rockCommands = rockAnswer.split(";");
-        System.err.println("Rocks: " + rockAnswer);
-
-        int answerCounter = 0;
-        int rockStart = 0;
-        int previousDistance = -1;
-        if (!rockCommands[answerCounter].equals("")) {
-            while (answerCounter < commands.length) {
-                String command = commands[answerCounter];
-                String[] details = command.split(" ");
-
-                int numberOfElements = Integer.valueOf(details[3]) - previousDistance - 1;
-                for (int i = 0; i < numberOfElements && rockStart + i < rockCommands.length; i++) {
-                    System.err.println("SP numberOfElements: " + numberOfElements + " previousDistance:" + previousDistance);
-                    System.out.println(rockCommands[rockStart + i]);
-                }
-                rockStart += numberOfElements;
-                previousDistance = Integer.valueOf(details[3]);
-                System.err.println("GL det3: " + Integer.valueOf(details[3]) + " previousDistance:" + previousDistance);
-                System.out.println(details[0] + " " + details[1] + " " + details[2]);
-                answerCounter++;
-            }
-        } else {
-
-
-            // game loop
-            answerCounter = 0;
-            while (answerCounter < commands.length) {
-                String[] details = commands[answerCounter++].split(" ");
-                System.out.println(details[0] + " " + details[1] + " " + details[2]);
-            }
-        }
-//        answerCounter = 0;
-//        if(!rockCommands[answerCounter].equals("")) {
-//            while (answerCounter < rockCommands.length) {
-//                System.out.println(rockCommands[answerCounter++]);
-//            }
-//        }
-        while (true) {
-            /*XI = in.nextInt();
-            YI = in.nextInt();
-            POSI = in.next();
-            in.nextLine();
-            int R = in.nextInt(); // the number of rocks currently in the grid.
-            in.nextLine();
-            for (int i = 0; i < R; i++) {
-                int XR = in.nextInt();
-                int YR = in.nextInt();
-                String POSR = in.next(); // rock entrance point into the room
-                in.nextLine();
-            }*/
-            System.out.println("WAIT"); // One line containing on of three commands: 'X Y LEFT', 'X Y RIGHT' or 'WAIT'
-        }
+        return new Coordinate(XI, YI);
     }
 
-    private static void adjustGrid(String[] commands) {
-        for (int i = 0; i < commands.length; i++) {
-            String[] details = commands[i].split(" ");
-            Room current = grid.get(new Coordinate(Integer.valueOf(details[0]), Integer.valueOf(details[1])));
-            Room newRoom;
-            if (details[2].equals("LEFT")) {
-                newRoom = new Room(current.type.left, LEFT);
+    private static Path getInitialPath(Coordinate coordinate, String indianaEntrance) {
+        Path[] paths = grid.get(coordinate).roomType.paths;
+        return getPathMatchingEntrance(paths, Direction.valueOf(indianaEntrance));
+    }
+    //</editor-fold>
+
+    //<editor-fold desc="Finding Indiana's path">
+    private static List<Command> goFrom(Coordinate coordinate, Path path, int rotationsRemaining, int distanceFromStart) {
+        Coordinate nextCoordinate = new Coordinate(coordinate.x, coordinate.y);
+        Direction nextRoomEntrance = calculateEntrance(nextCoordinate, path.exit);
+        if (isOutOfBounds(nextCoordinate)) {
+            return null;
+        }
+        if (isExitReached(nextCoordinate)) { // end of recursion
+            return new ArrayList<Command>(); // initial command list is empty because last room cannot be rotated
+        }
+        for (RotateOption option : findPossibleRotations(nextCoordinate, nextRoomEntrance, ++rotationsRemaining, distanceFromStart + 1)) {
+            List<Command> commands = goFrom(nextCoordinate, option.path, rotationsRemaining - option.numberOfRotations, distanceFromStart + 1);
+            if (null != commands) { // goal has been reached, end of recursion occurred
+                commands.addAll(option.rotateCommands);
+                return commands;
+            }
+        }
+        return null;
+    }
+
+    private static boolean isOutOfBounds(Coordinate c) {
+        return c.x < 0 || c.x > W - 1 || c.y > H - 1;
+    }
+
+    static List<RotateOption> findPossibleRotations(Coordinate c, Direction entrance, int rotationsRemaining, int distanceFromStart) {
+        List<RotateOption> rotateOptions = new ArrayList<RotateOption>();
+        Room room = grid.get(c);
+        List<Command> command = new ArrayList<Command>(0);
+        addRotateOption(rotateOptions, room.roomType.paths, entrance, 0, command); // set for not rotated room
+        if (!room.rotatable || rotationsRemaining == 0) {
+            return rotateOptions;
+        }
+
+        RoomType rightRoom = RoomType.byId(room.roomType.rightRotatedId);
+        command = new ArrayList<Command>(1);
+        Command rotateRightCommand = new Command(c, RIGHT, distanceFromStart);
+        command.add(rotateRightCommand);
+        addRotateOption(rotateOptions, rightRoom.paths, entrance, 1, command); // set for RIGHT rotated room
+
+        RoomType leftRoom = RoomType.byId(room.roomType.leftRotatedId);
+        command = new ArrayList<Command>(1);
+        command.add(new Command(c, LEFT, distanceFromStart));
+        addRotateOption(rotateOptions, leftRoom.paths, entrance, 1, command); // set for LEFT rotated room
+
+        if (--rotationsRemaining == 0) {
+            return rotateOptions;
+        }
+
+        command = new ArrayList<Command>(2);
+        command.add(rotateRightCommand);
+        command.add(rotateRightCommand);
+        addRotateOption(rotateOptions, RoomType.byId(rightRoom.rightRotatedId).paths, entrance, 2, command); // set for twice RIGHT rotated room
+        return rotateOptions;
+    }
+
+    static void addRotateOption(List<RotateOption> rotateOptions, Path[] roomPaths, Direction entrance, int rotations, List<Command> commands) {
+        Path path = getPathMatchingEntrance(roomPaths, entrance);
+        if (path != null) {
+            rotateOptions.add(new RotateOption(path, rotations, commands));
+        }
+    }
+    //</editor-fold>
+
+    private static void adjustGrid(List<Command> commands) {
+        for (Command command : commands) {
+            Room room = grid.get(command.coordinate);
+            if (command.direction == LEFT) {
+                grid.put(command.coordinate, new Room(room.roomType.leftRotatedId));
             } else {
-                if (i != 0 && commands[i].equals(commands[i - 1])) {
-                    newRoom = new Room(current.type.right, Direction.RIGHT_RIGHT);
-                } else {
-                    newRoom = new Room(current.type.right, RIGHT);
-                }
+                grid.put(command.coordinate, new Room(room.roomType.rightRotatedId));
             }
-            grid.put(new Coordinate(Integer.valueOf(details[0]), Integer.valueOf(details[1])), newRoom);
         }
     }
 
-    private static Path getStartingLeaveDirection(Coordinate coordinate, String posi) {
-        Path[] paths = grid.get(coordinate).type.paths;
-        Direction indiana = Direction.valueOf(posi);
-        int i = 0;
-        while (paths.length > i && paths[i].enter != indiana) {
-            i++;
-        }
-        return paths[i];
-    }
-
-    private static void goFrom(Coordinate fromCoordinate, Path path, int rotationsLeft, String result, int distance) {
-        if (null != answer) {
-            unnecessaryCalls++;
-            return;
-        }
-        if (fromCoordinate.y == H - 1 && fromCoordinate.x == EX) {
-            answer = result;
-            System.err.println("Result: " + result);
-            return;
-        }
-        Coordinate nextCoordinate = new Coordinate(fromCoordinate.x, fromCoordinate.y);
-        Direction nextRoomEntrance = calculateEntrance(nextCoordinate, path.leave);
-        if (nextCoordinate.x < 0 || nextCoordinate.x > W - 1 || nextCoordinate.y > H - 1) {
-            return;
-        }
-        distance++;
-        for (Position rotatedRoom : findPossibleRotations(nextCoordinate, nextRoomEntrance, ++rotationsLeft, distance)) {
-            goFrom(nextCoordinate, rotatedRoom.path, rotationsLeft - rotatedRoom.numberOfRotations, result + rotatedRoom.rotateText, distance);
-        }
-    }
-
-    private static String solveCrossroads(Coordinate coordinate, Path startingPath) {
+    //<editor-fold desc="From every crossroad on indy's path rotate first room possible so he cannot come to intersection with rocks">
+    private static List<Command> solveCrossroads(Coordinate coordinate, Path indyPath) {
         Room room = grid.get(coordinate);
-        String result = "";
-//        if(null != room.rotation) {
-//            if(room.rotation == Direction.RIGHT_RIGHT) {
-//                result += coordinate.x + " " + coordinate.y + " RIGHT;" + coordinate.x + " " + coordinate.y + " RIGHT;";
-//            } else {
-//                result += coordinate.x + " " + coordinate.y + " " + room.rotation + ";";
-//            }
-//        }
-        if (isCrossroad(room.type)) {
-            for (Direction entrance : findOtherEntrances(room.type, startingPath)) {
-                result += tryRotate(coordinate, entrance);
+        List<Command> result = new ArrayList<Command>();
+
+        if (isCrossroad(room.roomType)) {
+            for (Direction entrance : findOtherEntrances(room.roomType, indyPath)) {
+                result.addAll(tryRotate(coordinate, entrance)); // other entrances are actually exits from that room
             }
         }
 
-        Direction entrance = calculateEntrance(coordinate, startingPath.leave);
-        Room nextRoom = grid.get(coordinate);
-        if (nextRoom == null) {
+        Coordinate nextCoordinate = new Coordinate(coordinate.x, coordinate.y);
+        Direction entrance = calculateEntrance(nextCoordinate, indyPath.exit);
+        if(isExitReached(nextCoordinate)) {
             return result;
         }
-        Path nextPath = null;
-        for (Path path : nextRoom.type.paths) {
-            if (path.enter == entrance) {
-                nextPath = path;
-                break;
-            }
-        }
-        return result + solveCrossroads(coordinate, nextPath);
+
+        Path nextPath = getPathMatchingEntrance(grid.get(nextCoordinate).roomType.paths, entrance);
+        result.addAll(solveCrossroads(nextCoordinate, nextPath));
+        return result;
     }
 
     static boolean isCrossroad(RoomType roomType) {
-        return roomType == RoomType.CROSSROAD || roomType == RoomType.T_DOWN || roomType == RoomType.T_LEFT || roomType == RoomType.T_UP || roomType == RoomType.T_RIGHT;
+        return roomType == RoomType.CROSSROAD || roomType == RoomType.T_DOWN || roomType == RoomType.T_LEFT || roomType == RoomType.T_RIGHT;
     }
 
-    private static String tryRotate(Coordinate previousCoordinate, Direction exit) {
+    private static List<Direction> findOtherEntrances(RoomType roomType, Path indyPath) {
+        List<Direction> entrances = new ArrayList<Direction>(2);
+        for (Path path : roomType.paths) {
+            if (path.entrance != indyPath.entrance) {
+                entrances.add(path.entrance);
+            }
+        }
+        return entrances;
+    }
+
+    private static List<Command> tryRotate(Coordinate previousCoordinate, Direction leavingDirection) {
         Coordinate coordinate = new Coordinate(previousCoordinate.x, previousCoordinate.y);
-        Direction entrance = calculateEntrance(coordinate, exit);
+        Direction entrance = calculateEntrance(coordinate, leavingDirection);
         Room room = grid.get(coordinate);
         if (null == room) {
-            return "";
+            return new ArrayList<Command>(0);
         }
-        if (room.rotatable && room.type != RoomType.CROSSROAD) {
-            boolean needToRotate = needToRotate(room.type.paths, entrance);
+        if (room.rotatable && room.roomType != RoomType.CROSSROAD) {
+            boolean needToRotate = needToRotate(room.roomType.paths, entrance);
             if (!needToRotate) {
-                return "";
+                return new ArrayList<Command>(0);
             }
-            needToRotate = needToRotate(RoomType.byType(room.type.left).paths, entrance);
+            needToRotate = needToRotate(RoomType.byId(room.roomType.leftRotatedId).paths, entrance);
             if (!needToRotate) {
-                return coordinate.x + " " + coordinate.y + " LEFT;";
+                List<Command> result = new ArrayList<Command>(1);
+                result.add(new Command(coordinate, LEFT));
+                return result;
             }
-            needToRotate = needToRotate(RoomType.byType(room.type.right).paths, entrance);
+            needToRotate = needToRotate(RoomType.byId(room.roomType.rightRotatedId).paths, entrance);
             if (!needToRotate) {
-                return coordinate.x + " " + coordinate.y + " RIGHT;";
+                List<Command> result = new ArrayList<Command>(1);
+                result.add(new Command(coordinate, RIGHT));
+                return result;
             }
-            return "";
+            System.err.println("There is a T_DOWN that could be rotated twice to avoid intersection with indy @" + coordinate.x + ":" + coordinate.y);
+            return new ArrayList<Command>(0);
         } else {
-            String result = "";
-            for (Path path : room.type.paths) {
-                if (path.leave == entrance) {
-                    result += tryRotate(coordinate, path.enter);
+            List<Command> result = new ArrayList<Command>();
+            for (Path path : room.roomType.paths) {
+                if (path.exit == entrance) {
+                    result.addAll(tryRotate(coordinate, path.entrance));
                 }
             }
             return result;
@@ -227,21 +234,22 @@ class Player {
 
     static boolean needToRotate(Path[] paths, Direction match) {
         for (Path path : paths) {
-            if (path.leave == match) {
+            if (path.exit == match) {
                 return true;
             }
         }
         return false;
     }
+    //</editor-fold>
 
-    private static List<Direction> findOtherEntrances(RoomType roomType, Path indyPath) {
-        List<Direction> entrances = new ArrayList<Direction>(2);
-        for (Path path : roomType.paths) {
-            if (path.enter != indyPath.enter && path.enter != indyPath.leave) {
-                entrances.add(path.enter);
+    //<editor-fold desc="Helper methods">
+    private static Path getPathMatchingEntrance(Path[] paths, Direction entrance) {
+        for (Path path : paths) {
+            if (path.entrance == entrance) {
+                return path;
             }
         }
-        return entrances;
+        return null;
     }
 
     private static Direction calculateEntrance(Coordinate next, Direction leavingDirection) {
@@ -256,43 +264,62 @@ class Player {
                 next.y++;
                 return TOP;
             default:
-                return null; // will not happen
+                next.y--;
+                return DOWN;
         }
     }
 
-    static List<Position> findPossibleRotations(Coordinate c, Direction enter, int rotationsLeft, int distance) {
-        List<Position> rotatedRooms = new ArrayList<Position>();
-        Room room = grid.get(c);
-        addRotatedRoom(rotatedRooms, room.type, enter, 0, ""); // set for not rotated room
-        if (!room.rotatable || rotationsLeft == 0) {
-            return rotatedRooms;
-        }
+    private static boolean isExitReached(Coordinate c) {
+        return c.y == H - 1 && c.x == EX;
+    }
+    //</editor-fold>
 
-        RoomType rightRoom = RoomType.byType(room.type.right);
-        addRotatedRoom(rotatedRooms, rightRoom, enter, 1, c.x + " " + c.y + " RIGHT " + distance + ";"); // set for RIGHT rotated room
-        RoomType leftRoom = RoomType.byType(room.type.left);
-        addRotatedRoom(rotatedRooms, leftRoom, enter, 1, c.x + " " + c.y + " LEFT " + distance + ";"); // set for LEFT rotated room
-        if (rotationsLeft == 1) {
-            return rotatedRooms;
+    //<editor-fold desc="Output">
+    private static void outputWithoutConsideringRocks(List<Command> commands) {
+        for (Command command : commands) {
+            System.out.println(command);
         }
-
-        addRotatedRoom(rotatedRooms, RoomType.byType(rightRoom.right), enter, 2, c.x + " " + c.y + " RIGHT " + distance + ";" + c.x + " " + c.y + " RIGHT " + distance + ";"); // get for twice RIGHT rotated room
-        return rotatedRooms;
     }
 
-    static void addRotatedRoom(List<Position> rotatedRooms, RoomType roomType, Direction enter, int rotations, String text) {
-        for (Path path : roomType.paths) {
-            if (path.enter == enter) {
-                rotatedRooms.add(new Position(roomType, path, rotations, text));
+    private static void outputWithRockIntersections(List<Command> commands, List<Command> rockCommands) {
+        int previousDistance = -1;
+        int rockCommandsIterator = 0;
+        for(Command command : commands) {
+            int elementsToFit = command.distance - previousDistance - 1;
+            for(int i = 0; rockCommandsIterator < rockCommands.size() && i < elementsToFit; rockCommandsIterator++, i++) {
+                System.out.println(rockCommands.get(rockCommandsIterator));
             }
+            previousDistance = command.distance;
+            System.out.println(command);
         }
     }
 
-    /*static class Rotation {
+    private static void outputWaitTillTheEnd() {
+        while (true) {
+            System.out.println("WAIT"); // One line containing on of three commands: 'X Y LEFT', 'X Y RIGHT' or 'WAIT'
+        }
+    }
+
+    private static void logCommands(List<Command> commands, String title) {
+        for(Player.Command command: commands) {
+            System.err.println(title + " " + command + " " + command.distance);
+        }
+    }
+    //</editor-fold>
+
+    //<editor-fold desc="Classes and enums">
+    static class Command {
         Coordinate coordinate;
         Direction direction;
+        int distance;
 
-        public Rotation(Coordinate coordinate, Direction direction) {
+        public Command(Coordinate coordinate, Direction direction, int distance) {
+            this.coordinate = coordinate;
+            this.direction = direction;
+            this.distance = distance;
+        }
+
+        public Command(Coordinate coordinate, Direction direction) {
             this.coordinate = coordinate;
             this.direction = direction;
         }
@@ -301,19 +328,17 @@ class Player {
         public String toString() {
             return coordinate.x + " " + coordinate.y + " " + direction;
         }
-    }*/
+    }
 
-    static class Position {
-        RoomType roomType;
+    static class RotateOption {
         Path path;
         int numberOfRotations; // 0, 1, 2
-        String rotateText;
+        List<Command> rotateCommands;
 
-        public Position(RoomType roomType, Path path, int numberOfRotations, String rotateText) {
-            this.roomType = roomType;
+        public RotateOption(Path path, int numberOfRotations, List<Command> rotateCommands) {
             this.path = path;
             this.numberOfRotations = numberOfRotations;
-            this.rotateText = rotateText;
+            this.rotateCommands = rotateCommands;
         }
     }
 
@@ -333,18 +358,18 @@ class Player {
         /*12*/CORNER_DOWN_RIGHT(11, 13, new Path[]{Path.RIGHT_DOWN}),
         /*13*/CORNER_DOWN_LEFT(12, 10, new Path[]{Path.LEFT_DOWN});
 
-        int left;
-        int right;
+        int leftRotatedId;
+        int rightRotatedId;
         Path[] paths;
 
-        RoomType(int left, int right, Path[] paths) {
-            this.left = left;
-            this.right = right;
+        RoomType(int leftRotatedId, int rightRotatedId, Path[] paths) {
+            this.leftRotatedId = leftRotatedId;
+            this.rightRotatedId = rightRotatedId;
             this.paths = paths;
         }
 
-        public static RoomType byType(int type) {
-            return RoomType.values()[type];
+        public static RoomType byId(int id) {
+            return RoomType.values()[id];
         }
     }
 
@@ -357,12 +382,12 @@ class Player {
         RIGHT_DOWN(RIGHT, DOWN),
         RIGHT_LEFT(RIGHT, LEFT);
 
-        Direction enter;
-        Direction leave;
+        Direction entrance;
+        Direction exit;
 
-        Path(Direction enter, Direction leave) {
-            this.enter = enter;
-            this.leave = leave;
+        Path(Direction entrance, Direction exit) {
+            this.entrance = entrance;
+            this.exit = exit;
         }
     }
 
@@ -370,8 +395,7 @@ class Player {
         TOP,
         RIGHT,
         DOWN,
-        LEFT,
-        RIGHT_RIGHT;
+        LEFT
     }
 
     static class Coordinate {
@@ -401,21 +425,13 @@ class Player {
     }
 
     static class Room {
-        RoomType type;
+        RoomType roomType;
         boolean rotatable = true;
-        Direction rotation;
 
-        public Room(int roomType) {
-            if (roomType < 0) {
-                rotatable = false;
-                roomType *= -1;
-            }
-            this.type = RoomType.byType(roomType);
-        }
-
-        public Room(int roomType, Direction rotation) {
-            this(roomType);
-            this.rotation = rotation;
+        public Room(int roomTypeId) {
+            this.rotatable = roomTypeId >= 0;
+            this.roomType = RoomType.byId(Math.abs(roomTypeId));
         }
     }
+    //</editor-fold>
 }
