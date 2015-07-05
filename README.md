@@ -82,4 +82,4 @@ Puzzles test knowledge of various methodologies and algorithms, and are dristrib
 
 ___
 
-*Each task definition, description and image is found on [CodinGame](https://www.codingame.com/).*
+*Disclaimer: Each task definition, description and image is found on [CodinGame](https://www.codingame.com/).*
