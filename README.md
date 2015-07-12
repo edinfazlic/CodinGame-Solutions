@@ -78,8 +78,16 @@ Puzzles test knowledge of various methodologies and algorithms, and are dristrib
 
   ![Puzzles](../images/hard/IndianaLevel2.jpg)
 
+- Super Computer - [Java](/src/03-hard/SuperComputer.java)
+
+  ![Puzzles](../images/hard/SuperComputer.jpg)
+
 <a name="VeryHard"></a>
 ### :star::star::star::star: Very Hard
+
+- Music Scores - [Java](/src/04-very-hard/MusicScores.java)
+
+  ![Puzzles](../images/very hard/MusicScores.jpg)
 
 ___
 
