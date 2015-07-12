@@ -11,12 +11,13 @@ Puzzles test knowledge of various methodologies and algorithms, and are dristrib
 - :star::star::star: [Hard](#Hard)
 - :star::star::star::star:[Very Hard](#VeryHard)
 
-<a name="Easy"></a>
-### :star: Easy
+### Tutorial
 - Onboarding - [Java](/src/01-easy/Onboarding.java)
 
   ![Puzzles](../images/easy/Onboarding.jpg)
 
+<a name="Easy"></a>
+### :star: Easy
 - Power of Thor - [Java](/src/01-easy/PowerOfThor.java)
 
   ![Puzzles](../images/easy/PowerOfThor.jpg)
@@ -29,15 +30,15 @@ Puzzles test knowledge of various methodologies and algorithms, and are dristrib
 
   ![Puzzles](../images/easy/SkynetTheChasm.jpg)
 
+- Temperatures - [Java](/src/01-easy/Temperatures.java)
+
+  ![Puzzles](../images/easy/Temperatures.jpg)
+
 - Mars Lander - Level 1 - [Java](/src/01-easy/MarsLanderLevel1.java)
 
   :trophy: **Economic** - *Solve the 1st validation test with at least 300l of fuel remaining on "Mars Lander - Level 1" puzzle.*
 
   ![Puzzles](../images/easy/MarsLanderLevel1.jpg)
-
-- Temperatures - [Java](/src/01-easy/Temperatures.java)
-
-  ![Puzzles](../images/easy/Temperatures.jpg)
 
 - ASCII Art - [Java](/src/01-easy/ASCIIArt.java)
 
