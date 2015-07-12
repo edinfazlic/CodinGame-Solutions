@@ -5,7 +5,7 @@ Here can be found a set of a solutions for puzzles defined on https://www.coding
 Puzzles test knowledge of various methodologies and algorithms, and are dristributed in 4 difficulties. They are constructed in an interesting way so they can freely be called programming games, as CodinGame describes:
 > Programming games are turn-based. On each turn, you will get info from standard input (like a map, the enemies, etc.), then your code computes a strategy and writes an action to standard output (like shoot or move).
 
-## Single player puzzles. [:link:](https://www.codingame.com/puzzles)
+## Single player puzzles. [:link:](https://www.codingame.com/games/puzzles)
 - :star: [Easy](#Easy)
 - :star::star: [Medium](#Medium)
 - :star::star::star: [Hard](#Hard)
@@ -54,6 +54,8 @@ Puzzles test knowledge of various methodologies and algorithms, and are dristrib
 ![Puzzles](../images/small/hard/RollerCoaster.jpg) Roller Coaster - [Java](/src/03-hard/RollerCoaster.java)
 
 ![Puzzles](../images/small/hard/GenomeSequencing.jpg) Genome Sequencing - [Java](/src/03-hard/GenomeSequencing.java)
+
+![Puzzles](../images/small/hard/Surface.jpg) Surface - [Java](/src/03-hard/Surface.java)
 
 <a name="VeryHard"></a>
 ### :star::star::star::star: Very Hard
